@@ -2,92 +2,113 @@
 
 dropbear in chipbox
 
-## Getting started
+## History
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Back in 2011, when I first implemented dropbear in Chipbox ( dropbear 0.52 ), I was using vsftpd to transfer files, and wasn't using SCP...
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+After 10 years, when I started working back on Chipbox, I decided to have a look and then found that scp wasn't working at all !!
 
-## Add your files
+So I decided to give a try.
 
-- [ ] [Create](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Repo structure
+
+In this repo, you will find latest stable dropbear ( 2020-81 ) tarball, decompressed & compiled versions, as well as old dropbear0.52 used in chipbox.
+
+## How did I compiled dropbear-2020.81 to chipbox?
+
+1. Export PATH for toolchain
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/stulluk/chipbox-dropbear.git
-git branch -M main
-git push -uf origin main
+export PATH=/media/DATA/MERIH-YEDEK/toolchains/crosstool/gcc-3.4.6-glibc-2.3.6/arm-linux/bin/:$PATH
 ```
 
-## Integrate with your tools
+2. cd to new dropbear and compile as follows:
 
-- [ ] [Set up project integrations](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://gitlab.com/stulluk/chipbox-dropbear/-/settings/integrations)
+```
+CC=arm-linux-gcc ./configure --host=arm-linux
+```
 
-## Collaborate with your team
+Note: If I add ```--enable-static``` to configure line above, it creates a statically compiled dropbearmulti binary, and it works as well. But I decided to give a try to shared lib mode, and the size reduced to 226Kbyte.
 
-- [ ] [Invite team members and collaborators](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```
+make PROGRAMS="dropbear dropbearkey scp" MULTI=1 strip
+```
+This created a statically compiled & stripped binary:
 
-## Test and Deploy
+```
+$  ls -lash dropbearmulti 
+228K -rwxrwxr-x 1 stulluk stulluk 226K Ara 26 14:06 dropbearmulti
+$  file dropbearmulti 
+dropbearmulti: ELF 32-bit LSB executable, ARM, version 1 (ARM), dynamically linked, interpreter /lib/ld-linux.so.2, for GNU/Linux 2.4.18, stripped
+$  md5sum dropbearmulti 
+02307e4f61bf08fa163430ddbc0902e1  dropbearmulti
 
-Use the built-in continuous integration in GitLab.
+```
 
-- [ ] [Get started with GitLab CI/CD](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+3. upload dropbearmulti to chipbox /usr/plugin partition ( because I had free space there )
+4. create symlinks
+```
+ln -s /usr/plugin/dropbearmulti /usr/plugin/dropbear
+ln -s /usr/plugin/dropbearmulti /usr/plugin/dropbearkey
+ln -s /usr/plugin/dropbearmulti /usr/bin/scp
+```
 
-***
+5. system init:
 
-# Editing this README
+There is already an init script under /etc/init.d:
+```
+# cat /etc/init.d/S90dropbear 
+#!/bin/sh
+#
+# Start the dropbear....
+#
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://gitlab.com/-/experiment/new_project_readme_content:f01c6434b4fa2d39f7541e3d26e0e137?https://www.makeareadme.com/) for this template.
+start() {
+        echo "Starting dropbear..."
+        /usr/plugin/dropbear -b /usr/plugin/dr_banner.txt
+}
+stop() {
+        echo -n "Stopping dropbear..."
+        killall dropbear
+}
+restart() {
+        stop
+        start
+}
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  restart|reload)
+        restart
+        ;;
+  *)
+        echo $"Usage: $0 {start|stop|restart}"
+        exit 1
+esac
 
-## Name
-Choose a self-explaining name for your project.
+exit $?
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+# 
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Then I decided to remove the banner, and run a small test:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```
+stulluk ~ $  scp IMG_20211206_153915.jpg cbx:/tmp/
+Warning: Permanently added '192.168.1.232' (RSA) to the list of known hosts.
+IMG_20211206_153915.jpg                                               100% 4256KB 742.6KB/s   00:05    
+stulluk ~ $
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+Sadly, too slow... :(
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+## Further considerations
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+When I run df command, it doesn't immediately show free space, I need to wait a while. I feel the RW speed of mtdblock or NOR Flash is too slow, so it doesn't reflect changes quickly.
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
 
